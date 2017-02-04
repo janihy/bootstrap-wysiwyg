@@ -70,17 +70,24 @@
         } );
      }
 
-     Wysiwyg.prototype.readFileIntoDataUrl = function( fileInfo ) {
-        var loader = $.Deferred(),
-        fReader = new FileReader();
+     Wysiwyg.prototype.readFileAndAjaxIt = function( fileInfo, options ) {
+        var loader = $.Deferred()
 
-        fReader.onload = function( e ) {
-            loader.resolve( e.target.result );
-        };
-
-        fReader.onerror = loader.reject;
-        fReader.onprogress = loader.notify;
-        fReader.readAsDataURL( fileInfo );
+        var data = new FormData();
+        data.append('file', fileInfo);
+        var ajaxCall = $.ajax({
+            url: options.form.ajaxUrl,
+            type: 'POST',
+            data: data,
+            processData: false,
+            contentType: false,
+            success: function(data){
+                loader.resolve(data.url)
+            },
+            error: function(data) {
+                loader.reject()
+            }
+        });
         return loader.promise();
      };
 
@@ -159,7 +166,7 @@
         var self = this;
         $.each( options.hotKeys, function( hotkey, command ) {
             if(!command) return;
-            
+
             $( editor ).keydown( hotkey, function( e ) {
                 if ( editor.attr( "contenteditable" ) && $( editor ).is( ":visible" ) ) {
                     e.preventDefault();
@@ -239,7 +246,7 @@
         editor.focus();
         $.each( files, function( idx, fileInfo ) {
             if ( /^image\//.test( fileInfo.type ) ) {
-                $.when( self.readFileIntoDataUrl( fileInfo ) ).done( function( dataUrl ) {
+                $.when( self.readFileAndAjaxIt( fileInfo, options ) ).done( function( dataUrl ) {
                     self.execCommand( "insertimage", dataUrl, editor, options, toolbarBtnSelector );
                     editor.trigger( "image-inserted" );
                 } ).fail( function( e ) {
